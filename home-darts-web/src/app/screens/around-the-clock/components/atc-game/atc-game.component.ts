@@ -1,10 +1,14 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { getSectionsForAroundTheClock } from '../../utils/functions/get-sections-for-around-the-clock';
 import { GameDirections } from '../../models/game-directions.enum';
 import { AroundTheClockApiService } from '../../service/around-the-clock-api.service';
 import { catchError } from 'rxjs';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+import { Store } from '@ngrx/store';
+import { gameInfoLoadingStarted } from '../../../../store/actions/home-darts.actions';
+import { atcResetGame } from '../../store/actions/around-the-clock.actions';
+import { AroundTheClockState } from '../../models/around-the-clock-state.inteface';
 
 @UntilDestroy()
 @Component({
@@ -13,7 +17,7 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
   styleUrls: ['./atc-game.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AtcGameComponent implements OnInit {
+export class AtcGameComponent implements OnInit, OnDestroy {
   public get buttonDisabled(): boolean {
     return this.loading || this.isCompleted;
   };
@@ -35,14 +39,16 @@ export class AtcGameComponent implements OnInit {
     private activatedRoute: ActivatedRoute,
     private cdr: ChangeDetectorRef,
     private atcApi: AroundTheClockApiService,
-    private router: Router,
+    private store: Store<{ aroundTheClock: AroundTheClockState }>,
   ) {}
 
   public ngOnInit(): void {
     this.gameId = Number(this.activatedRoute.snapshot.paramMap.get('gameId'));
-    if (isNaN(this.gameId)) {
-      this.router.navigate(['../'], { relativeTo: this.activatedRoute });
-    }
+    this.store.dispatch(gameInfoLoadingStarted({ gameId: this.gameId }));
+  }
+
+  public ngOnDestroy(): void {
+    this.store.dispatch(atcResetGame());
   }
 
   public onCompleteBtnClick(): void {
